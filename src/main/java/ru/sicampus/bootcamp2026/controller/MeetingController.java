@@ -21,13 +21,11 @@ import java.util.List;
 public class MeetingController {
 
     private final MeetingService meetingService;
-    private final MeetingAttendeesService meetingAttendeesService;
 
     @GetMapping("/{id}")
     public ResponseEntity<MeetingsDto> getMeeting(@PathVariable("id") Long id) {
-        return meetingService.getMeeting(id)
-                .map(user -> ResponseEntity.ok(user))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        MeetingsDto meeting = meetingService.getMeeting(id);
+        return ResponseEntity.ok(meeting);
     }
 
     @PostMapping("/create")
@@ -40,13 +38,14 @@ public class MeetingController {
     }
 
     @GetMapping("/user/{userId}")
-    public List<MeetingsDto> getMyMeetingsByDay(
+    public ResponseEntity<List<MeetingsDto>> getMyMeetingsByDay(
             @PathVariable Long userId,
             @RequestParam
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate date
     ) {
-        return meetingService.getMyMeetingsByDay(userId, date);
+        return ResponseEntity.ok(
+                meetingService.getMyMeetingsByDay(userId, date));
     }
 
     @DeleteMapping("/delete/{id}")

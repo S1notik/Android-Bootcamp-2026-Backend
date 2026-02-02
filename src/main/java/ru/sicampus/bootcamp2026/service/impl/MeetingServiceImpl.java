@@ -2,12 +2,13 @@ package ru.sicampus.bootcamp2026.service.impl;
 
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 import ru.sicampus.bootcamp2026.dto.CreateMeetingDto;
 import ru.sicampus.bootcamp2026.dto.MeetingsDto;
+import ru.sicampus.bootcamp2026.exception.InvalidMeetingTimeException;
+import ru.sicampus.bootcamp2026.exception.MeetingNotFoundException;
+import ru.sicampus.bootcamp2026.exception.UserNotFoundException;
 import ru.sicampus.bootcamp2026.model.entity.MeetingAttendees;
 import ru.sicampus.bootcamp2026.model.entity.MeetingAttendeesId;
 import ru.sicampus.bootcamp2026.model.entity.Meetings;
@@ -36,42 +37,30 @@ public class MeetingServiceImpl implements MeetingService {
     private final MeetingAttendeesRepository meetingAttendeesRepository;
 
     @Override
-    public Optional<MeetingsDto> getMeeting(Long id) {
-        try {
-            return meetingRepository.findById(id).map(MeetingMapper::toDto);
-        } catch (NumberFormatException e) {
-            return Optional.empty();
-        }
+    public MeetingsDto getMeeting(Long id) {
+        return meetingRepository.findById(id)
+                .map(MeetingMapper::toDto)
+                .orElseThrow(() -> new MeetingNotFoundException(id));
     }
 
     @Transactional
     @Override
     public void createMeeting(CreateMeetingDto request) {
-
         if (request.getCreatorId() == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "creatorId must not be null"
-            );
+            throw new InvalidMeetingTimeException("creatorId must not be null");
         }
-
         if (request.getAttendeeIds() == null || request.getAttendeeIds().isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "attendeeIds must not be empty"
-            );
+            throw new InvalidMeetingTimeException("attendeeIds must not be empty");
         }
-
         if (request.getAttendeeIds().contains(null)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "attendeeIds contains null value"
-            );
+            throw new InvalidMeetingTimeException("attendeeIds contains null value");
         }
-
         Users creator = userRepository.findById(request.getCreatorId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Creator not found"));
+                .orElseThrow(() -> new UserNotFoundException(request.getCreatorId()));
+        LocalDateTime start = request.getStartTime();
+        LocalDateTime end = request.getEndTime();
+
+        validateMeetingTime(start, end);
 
         Meetings meeting = new Meetings();
         meeting.setCreator(creator);
@@ -84,11 +73,8 @@ public class MeetingServiceImpl implements MeetingService {
 
         meeting = meetingRepository.saveAndFlush(meeting);
         for (Long userId : request.getAttendeeIds()) {
-
             Users user = userRepository.findById(userId)
-                    .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.NOT_FOUND, "User not found"));
-
+                    .orElseThrow(() -> new UserNotFoundException(userId));
             MeetingAttendees attendee = new MeetingAttendees();
             attendee.setId(new MeetingAttendeesId(
                     meeting.getId(),
@@ -97,7 +83,6 @@ public class MeetingServiceImpl implements MeetingService {
             attendee.setMeeting(meeting);
             attendee.setUser(user);
             attendee.setStatus(UserStatus.PENDING);
-
             meetingAttendeesRepository.save(attendee);
         }
 
@@ -107,7 +92,6 @@ public class MeetingServiceImpl implements MeetingService {
     public List<MeetingsDto> getMyMeetingsByDay(Long userId, LocalDate date) {
         LocalDateTime from = date.atStartOfDay();
         LocalDateTime to = date.plusDays(1).atStartOfDay();
-
         return meetingRepository
                 .findMyMeetingsByDay(userId, from, to)
                 .stream()
@@ -119,12 +103,19 @@ public class MeetingServiceImpl implements MeetingService {
     @Override
     public void deleteMeeting(long id) {
         Meetings meeting = meetingRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Meeting not found"));
-
-        // Удалить участников
+                .orElseThrow(() -> new MeetingNotFoundException(id));
         meetingAttendeesRepository.deleteAll(meeting.getAttendees());
         meetingRepository.delete(meeting);
+    }
+
+    private void validateMeetingTime(LocalDateTime start, LocalDateTime end) {
+        if (start.getMinute() != 0 || end.getMinute() != 0) {
+            throw new InvalidMeetingTimeException("Meeting must start and end at full hour (minutes = 00)");
+        }
+
+        if (!end.isAfter(start) || end.isAfter(start.plusHours(1))) {
+            throw new InvalidMeetingTimeException("Meeting duration must be maximum 1 hour");
+        }
     }
 
 }

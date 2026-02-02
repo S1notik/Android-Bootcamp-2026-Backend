@@ -5,9 +5,6 @@ import lombok.experimental.UtilityClass;
 import ru.sicampus.bootcamp2026.dto.MeetingAttendeeDto;
 import ru.sicampus.bootcamp2026.model.entity.MeetingAttendees;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @UtilityClass
 public class MeetingAttendeeMapper {

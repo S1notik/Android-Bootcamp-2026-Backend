@@ -1,7 +1,5 @@
 package ru.sicampus.bootcamp2026.util;
 
-
-import lombok.NoArgsConstructor;
 import lombok.experimental.UtilityClass;
 import ru.sicampus.bootcamp2026.dto.UserDto;
 import ru.sicampus.bootcamp2026.model.entity.Users;

@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.sicampus.bootcamp2026.dto.UserDto;
 import ru.sicampus.bootcamp2026.dto.UserUpdateDto;
+import ru.sicampus.bootcamp2026.exception.UserNotFoundException;
 import ru.sicampus.bootcamp2026.model.entity.Users;
 import ru.sicampus.bootcamp2026.repository.UserRepository;
 import ru.sicampus.bootcamp2026.service.UserService;
@@ -20,12 +21,10 @@ public class UserServiceImpl implements UserService {
     private final UserRepository repository;
 
     @Override
-    public Optional<UserDto> getUserById(Long id) {
-        try {
-            return repository.findById(id).map(UserMapper::toDto);
-        } catch (NumberFormatException e) {
-            return Optional.empty();
-        }
+    public UserDto getUserById(Long id) {
+        return repository.findById(id)
+                .map(UserMapper::toDto)
+                .orElseThrow(() -> new UserNotFoundException(id));
     }
 
     @Override
@@ -43,8 +42,6 @@ public class UserServiceImpl implements UserService {
                     if (updateDto.getEmail() != null) user.setEmail(updateDto.getEmail());
                     if (updateDto.getUsername() != null) user.setUsername(updateDto.getUsername());
                     if (updateDto.getPosition() != null) user.setPosition(updateDto.getPosition());
-
-                    // Пароль лучше хэшировать!
                     if (updateDto.getPassword() != null) {
                         user.setPassword(updateDto.getPassword());
                     }

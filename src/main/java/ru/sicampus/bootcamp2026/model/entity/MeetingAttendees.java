@@ -8,8 +8,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import ru.sicampus.bootcamp2026.model.enums.UserStatus;
 
-import java.time.LocalDateTime;
-
 
 @Getter
 @Setter
